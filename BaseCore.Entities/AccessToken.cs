@@ -1,21 +1,27 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using BaseCore.Common;
+﻿using BaseCore.Common;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BaseCore.Entities
 {
-    public partial class AccessToken: Entity
+    [Table("AccessTokens")]
+    public partial class AccessToken : Entity
     {
-        public Guid Guid { get; set; }
-        [BsonRepresentation(BsonType.ObjectId)]
+        public Guid Guid { get; set; } = Guid.NewGuid();
+
+        [Required]
         public string UserId { get; set; }
+
+        [Required]
         public string Token { get; set; }
+
         public DateTime Expirated { get; set; }
-        public string CreatedBy { get; set; }
-        public DateTime Created { get; set; } = DateTime.Now;
-        public virtual ICollection<Role> Roles { get; set; } 
+
+        public virtual ICollection<Role> Roles { get; set; } = new HashSet<Role>();
+
+        [ForeignKey(nameof(UserId))]
         public virtual User User { get; set; }
     }
 }

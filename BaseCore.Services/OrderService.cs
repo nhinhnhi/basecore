@@ -1,78 +1,73 @@
-using MongoDB.Driver;
 using BaseCore.Entities;
-using BaseCore.Repository;
+using BaseCore.Repository.EFCore;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace BaseCore.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly MongoDbContext _context;
+        private readonly IOrderRepositoryEF _orderRepository;
+        private readonly IOrderDetailRepositoryEF _orderDetailRepository;
+        private readonly IProductRepositoryEF _productRepository;
 
-        public OrderService(MongoDbContext context)
+        public OrderService(
+            IOrderRepositoryEF orderRepository,
+            IOrderDetailRepositoryEF orderDetailRepository,
+            IProductRepositoryEF productRepository)
         {
-            _context = context;
+            _orderRepository = orderRepository;
+            _orderDetailRepository = orderDetailRepository;
+            _productRepository = productRepository;
         }
 
         public async Task<Order> CreateOrderAsync(Order order)
         {
-            // Get next ID
-            var maxOrder = await _context.Orders
-                .Find(_ => true)
-                .SortByDescending(o => o.Id)
-                .FirstOrDefaultAsync();
-            order.Id = (maxOrder?.Id ?? 0) + 1;
-
             order.OrderDate = DateTime.UtcNow;
             order.Status = "Pending";
+            // Id tự tăng
+            var createdOrder = await _orderRepository.AddAsync(order);
 
-            await _context.Orders.InsertOneAsync(order);
-            return order;
+            // Nếu có OrderDetails, thêm từng detail (gán OrderId)
+            if (order.OrderDetails != null)
+            {
+                foreach (var detail in order.OrderDetails)
+                {
+                    detail.OrderId = createdOrder.Id;
+                    await _orderDetailRepository.AddAsync(detail);
+                }
+            }
+
+            return createdOrder;
         }
 
         public async Task<List<Order>> GetOrdersByUserIdAsync(Guid userId)
         {
-            var orders = await _context.Orders
-                .Find(o => o.UserId == userId)
-                .SortByDescending(o => o.OrderDate)
-                .ToListAsync();
-
-            // Load order details and products
+            var orders = await _orderRepository.GetByUserAsync(userId);
+            // Load details và product cho mỗi order
             foreach (var order in orders)
             {
-                if (order.OrderDetails != null)
+                order.OrderDetails = await _orderDetailRepository.GetByOrderAsync(order.Id);
+                foreach (var detail in order.OrderDetails)
                 {
-                    foreach (var detail in order.OrderDetails)
-                    {
-                        detail.Product = await _context.Products
-                            .Find(p => p.Id == detail.ProductId)
-                            .FirstOrDefaultAsync();
-                    }
+                    detail.Product = await _productRepository.GetByIdAsync(detail.ProductId);
                 }
             }
-
             return orders;
         }
 
-        public async Task<Order> GetOrderByIdAsync(int id)
+        public async Task<Order?> GetOrderByIdAsync(int id)
         {
-            var order = await _context.Orders
-                .Find(o => o.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (order?.OrderDetails != null)
+            var order = await _orderRepository.GetByIdAsync(id);
+            if (order != null)
             {
+                order.OrderDetails = await _orderDetailRepository.GetByOrderAsync(order.Id);
                 foreach (var detail in order.OrderDetails)
                 {
-                    detail.Product = await _context.Products
-                        .Find(p => p.Id == detail.ProductId)
-                        .FirstOrDefaultAsync();
+                    detail.Product = await _productRepository.GetByIdAsync(detail.ProductId);
                 }
             }
-
             return order;
         }
     }

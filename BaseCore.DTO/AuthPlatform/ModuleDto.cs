@@ -1,12 +1,9 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace BaseCore.DTO.AuthPlatform
 {
     public class ModuleDto
     {
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -16,7 +13,8 @@ namespace BaseCore.DTO.AuthPlatform
         public ICollection<FunctionDto> ModuleFunction { get; set; }
     }
 
-    public class ModuleStatusParam {
+    public class ModuleStatusParam
+    {
         public string Id { get; set; }
         public bool IsActive { get; set; }
     }

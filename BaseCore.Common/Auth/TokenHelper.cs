@@ -11,6 +11,7 @@ namespace BaseCore.Common
 {
     public static class TokenHelper
     {
+        // ========== JWT METHODS (giữ nguyên) ==========
         public static bool ValidateToken(string secretKey, string authToken)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -22,39 +23,10 @@ namespace BaseCore.Common
                 IPrincipal principal = tokenHandler.ValidateToken(authToken, validationParameters, out validatedToken);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }
-        }
-
-        public static string HashPassword(string password, out byte[] salt)
-        {
-            salt = new byte[128 / 8];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(salt);
-            }
-            string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: password,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA1,
-                iterationCount: 10000,
-                numBytesRequested: 256 / 8));
-
-            return hashed;
-        }
-
-        public static bool IsValidPassword(string password, byte[] salt, string hashedParam)
-        {
-            var hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-                password: password,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA1,
-                iterationCount: 10000,
-                numBytesRequested: 256 / 8));
-
-            return hashed.Equals(hashedParam);
         }
 
         public static string GenerateToken(string secretKey, int minuteExpireTime, string userId, string userName, string roles)
@@ -88,6 +60,49 @@ namespace BaseCore.Common
                 ValidateAudience = false,
                 ValidateLifetime = true
             };
+        }
+
+        // ========== PASSWORD HASHING METHODS (dùng PBKDF2 SHA256) ==========
+        /// <summary>
+        /// Hash password using PBKDF2 with SHA256, returns hash string and salt
+        /// </summary>
+        public static string HashPassword(string password, out byte[] salt)
+        {
+            salt = new byte[16];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256))
+            {
+                byte[] hash = pbkdf2.GetBytes(32);
+                return Convert.ToBase64String(hash);
+            }
+        }
+
+        /// <summary>
+        /// Verify a password against stored hash and salt
+        /// </summary>
+        public static bool VerifyPassword(string password, string storedHash, byte[] salt)
+        {
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 10000, HashAlgorithmName.SHA256))
+            {
+                byte[] hash = pbkdf2.GetBytes(32);
+                return Convert.ToBase64String(hash) == storedHash;
+            }
+        }
+
+        // ========== LEGACY METHOD (giữ để tương thích, nhưng khuyến cáo dùng VerifyPassword) ==========
+        [Obsolete("Use VerifyPassword instead")]
+        public static bool IsValidPassword(string password, byte[] salt, string hashedParam)
+        {
+            var hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: password,
+                salt: salt,
+                prf: KeyDerivationPrf.HMACSHA1,
+                iterationCount: 10000,
+                numBytesRequested: 256 / 8));
+            return hashed.Equals(hashedParam);
         }
     }
 }

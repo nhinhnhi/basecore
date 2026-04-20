@@ -14,7 +14,7 @@ namespace BaseCore.Repository.EFCore
 
     public class ProductRepositoryEF : Repository<Product>, IProductRepositoryEF
     {
-        public ProductRepositoryEF(MySqlDbContext context) : base(context)
+        public ProductRepositoryEF(AppDbContext context) : base(context)
         {
         }
 
@@ -38,7 +38,7 @@ namespace BaseCore.Repository.EFCore
             var totalCount = await query.CountAsync();
 
             var products = await query
-                .OrderByDescending(p => p.Id)
+                .OrderBy(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

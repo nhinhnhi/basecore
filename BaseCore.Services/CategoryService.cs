@@ -1,6 +1,5 @@
-using MongoDB.Driver;
 using BaseCore.Entities;
-using BaseCore.Repository;
+using BaseCore.Repository.EFCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -8,44 +7,38 @@ namespace BaseCore.Services
 {
     public class CategoryService : ICategoryService
     {
-        private readonly MongoDbContext _context;
+        private readonly ICategoryRepositoryEF _categoryRepository;
 
-        public CategoryService(MongoDbContext context)
+        public CategoryService(ICategoryRepositoryEF categoryRepository)
         {
-            _context = context;
+            _categoryRepository = categoryRepository;
         }
 
         public async Task<List<Category>> GetAllAsync()
         {
-            return await _context.Categories.Find(_ => true).ToListAsync();
+            var categories = await _categoryRepository.GetAllAsync();
+            return categories.ToList();
         }
 
-        public async Task<Category> GetByIdAsync(int id)
+        public async Task<Category?> GetByIdAsync(int id)
         {
-            return await _context.Categories.Find(c => c.Id == id).FirstOrDefaultAsync();
+            return await _categoryRepository.GetByIdAsync(id);
         }
 
         public async Task<Category> CreateAsync(Category category)
         {
-            // Get next ID
-            var maxCategory = await _context.Categories
-                .Find(_ => true)
-                .SortByDescending(c => c.Id)
-                .FirstOrDefaultAsync();
-            category.Id = (maxCategory?.Id ?? 0) + 1;
-
-            await _context.Categories.InsertOneAsync(category);
-            return category;
+            // Id sẽ tự động tăng trong database (IDENTITY), không cần tự sinh
+            return await _categoryRepository.AddAsync(category);
         }
 
         public async Task UpdateAsync(Category category)
         {
-            await _context.Categories.ReplaceOneAsync(c => c.Id == category.Id, category);
+            await _categoryRepository.UpdateAsync(category);
         }
 
         public async Task DeleteAsync(int id)
         {
-            await _context.Categories.DeleteOneAsync(c => c.Id == id);
+            await _categoryRepository.DeleteByIdAsync(id);
         }
     }
 }

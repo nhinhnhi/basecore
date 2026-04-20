@@ -4,19 +4,16 @@ using BaseCore.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
 namespace BaseCore.Repository.Migrations
 {
-    [DbContext(typeof(MySqlDbContext))]
-    [Migration("20260318073813_InitialDatabase")]
-    partial class InitialDatabase
+    [DbContext(typeof(AppDbContext))]
+    partial class AppDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,38 +43,6 @@ namespace BaseCore.Repository.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Description = "Electronic devices and gadgets",
-                            Name = "Electronics"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Description = "Apparel and fashion items",
-                            Name = "Clothing"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Description = "Books and publications",
-                            Name = "Books"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Description = "Home and garden products",
-                            Name = "Home & Garden"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Description = "Sports equipment and accessories",
-                            Name = "Sports"
-                        });
                 });
 
             modelBuilder.Entity("BaseCore.Entities.Order", b =>
@@ -98,13 +63,15 @@ namespace BaseCore.Repository.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<Guid>("UserId")
+                        .HasMaxLength(450)
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
@@ -123,9 +90,6 @@ namespace BaseCore.Repository.Migrations
                     b.Property<int>("OrderId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("OrderId1")
-                        .HasColumnType("int");
-
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
@@ -139,8 +103,6 @@ namespace BaseCore.Repository.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OrderId");
-
-                    b.HasIndex("OrderId1");
 
                     b.HasIndex("ProductId");
 
@@ -185,68 +147,18 @@ namespace BaseCore.Repository.Migrations
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Products");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CategoryId = 1,
-                            Description = "High-performance laptop",
-                            ImageUrl = "",
-                            Name = "Laptop Dell XPS 15",
-                            Price = 35000000m,
-                            Stock = 10
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CategoryId = 1,
-                            Description = "Latest Apple smartphone",
-                            ImageUrl = "",
-                            Name = "iPhone 15 Pro",
-                            Price = 28000000m,
-                            Stock = 15
-                        },
-                        new
-                        {
-                            Id = 3,
-                            CategoryId = 2,
-                            Description = "Comfortable cotton t-shirt",
-                            ImageUrl = "",
-                            Name = "T-Shirt Cotton",
-                            Price = 250000m,
-                            Stock = 100
-                        },
-                        new
-                        {
-                            Id = 4,
-                            CategoryId = 3,
-                            Description = "Learn programming basics",
-                            ImageUrl = "",
-                            Name = "Programming Book",
-                            Price = 450000m,
-                            Stock = 50
-                        },
-                        new
-                        {
-                            Id = 5,
-                            CategoryId = 4,
-                            Description = "Complete gardening toolkit",
-                            ImageUrl = "",
-                            Name = "Garden Tools Set",
-                            Price = 850000m,
-                            Stock = 25
-                        });
                 });
 
             modelBuilder.Entity("BaseCore.Entities.User", b =>
                 {
                     b.Property<string>("Id")
+                        .HasMaxLength(450)
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Contact")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
@@ -258,7 +170,8 @@ namespace BaseCore.Repository.Migrations
 
                     b.Property<string>("Image")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -280,7 +193,8 @@ namespace BaseCore.Repository.Migrations
 
                     b.Property<string>("Position")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<byte[]>("Salt")
                         .IsRequired()
@@ -288,8 +202,8 @@ namespace BaseCore.Repository.Migrations
 
                     b.Property<string>("UserName")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int>("UserType")
                         .HasColumnType("int");
@@ -305,14 +219,10 @@ namespace BaseCore.Repository.Migrations
             modelBuilder.Entity("BaseCore.Entities.OrderDetail", b =>
                 {
                     b.HasOne("BaseCore.Entities.Order", "Order")
-                        .WithMany()
+                        .WithMany("OrderDetails")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("BaseCore.Entities.Order", null)
-                        .WithMany("OrderDetails")
-                        .HasForeignKey("OrderId1");
 
                     b.HasOne("BaseCore.Entities.Product", "Product")
                         .WithMany()

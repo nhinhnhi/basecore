@@ -1,12 +1,7 @@
-﻿
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-
-namespace BaseCore.DTO.AuthPlatform
+﻿namespace BaseCore.DTO.AuthPlatform
 {
     public class RoleModuleFunctionDto
     {
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
         public string ModuleFunctionId { get; set; }
         public string FunctionId { get; set; }

@@ -1,8 +1,6 @@
-using MongoDB.Driver;
 using BaseCore.Entities;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using BaseCore.Repository;
+using Microsoft.EntityFrameworkCore;
 
 namespace BaseCore.Repository.Authen
 {
@@ -19,9 +17,9 @@ namespace BaseCore.Repository.Authen
 
     public class UserRepository : IUserRepository
     {
-        private readonly MongoDbContext _context;
+        private readonly AppDbContext _context;
 
-        public UserRepository(MongoDbContext context)
+        public UserRepository(AppDbContext context)
         {
             _context = context;
         }
@@ -29,63 +27,66 @@ namespace BaseCore.Repository.Authen
         public async Task<User> GetByUsernameAsync(string username)
         {
             return await _context.Users
-                .Find(u => u.UserName == username && u.IsActive)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(u => u.UserName == username && u.IsActive);
         }
 
         public async Task<User> GetByIdAsync(string id)
         {
             return await _context.Users
-                .Find(u => u.Id == id)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public async Task<List<User>> GetAllAsync()
         {
             return await _context.Users
-                .Find(u => u.IsActive)
+                .Where(u => u.IsActive)
                 .ToListAsync();
         }
 
         public async Task CreateAsync(User user)
         {
-            await _context.Users.InsertOneAsync(user);
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(User user)
         {
-            await _context.Users.ReplaceOneAsync(u => u.Id == user.Id, user);
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(string id)
         {
-            await _context.Users.DeleteOneAsync(u => u.Id == id);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == id);
+            if (user != null)
+            {
+                user.IsActive = false;
+                await _context.SaveChangesAsync();
+            }
         }
 
         public async Task<(List<User> Users, int TotalCount)> SearchAsync(string keyword, int page, int pageSize)
         {
-            var filterBuilder = Builders<User>.Filter;
-            var filter = filterBuilder.Eq(u => u.IsActive, true);
+            var query = _context.Users.Where(u => u.IsActive);
 
             if (!string.IsNullOrEmpty(keyword))
             {
-                var keywordLower = keyword.ToLower();
-                var keywordFilter = filterBuilder.Or(
-                    filterBuilder.Regex(u => u.UserName, new MongoDB.Bson.BsonRegularExpression(keyword, "i")),
-                    filterBuilder.Regex(u => u.Name, new MongoDB.Bson.BsonRegularExpression(keyword, "i")),
-                    filterBuilder.Regex(u => u.Email, new MongoDB.Bson.BsonRegularExpression(keyword, "i")),
-                    filterBuilder.Regex(u => u.Phone, new MongoDB.Bson.BsonRegularExpression(keyword, "i"))
+                keyword = keyword.ToLower();
+                query = query.Where(u =>
+                    u.UserName.ToLower().Contains(keyword) ||
+                    (u.Name != null && u.Name.ToLower().Contains(keyword)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(keyword)) ||
+                    (u.Phone != null && u.Phone.ToLower().Contains(keyword))
                 );
-                filter = filterBuilder.And(filter, keywordFilter);
             }
 
-            var totalCount = (int)await _context.Users.CountDocumentsAsync(filter);
+            var totalCount = await query.CountAsync();
 
-            var users = await _context.Users
-                .Find(filter)
-                .SortByDescending(u => u.Created)
+            var users = await query
+                .OrderByDescending(u => u.Created)
                 .Skip((page - 1) * pageSize)
-                .Limit(pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return (users, totalCount);

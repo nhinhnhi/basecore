@@ -1,15 +1,16 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using System;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BaseCore.Common
 {
     public class Entity
     {
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Guid Id { get; set; } = Guid.NewGuid(); // hoặc để DB tự sinh, không cần gán mặc định
 
-        public DateTime CreatedDateTime { get; set; } = new DateTime();
-        public string CreatedUser { get; set; }
+        public DateTime CreatedDateTime { get; set; } = DateTime.UtcNow;
+        public string? CreatedUser { get; set; } // nullable vì có thể null
     }
 }

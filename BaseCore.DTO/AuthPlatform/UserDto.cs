@@ -1,13 +1,10 @@
-﻿using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace BaseCore.DTO.AuthPlatform
 {
     public class UserDto
     {
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
         public string Name { get; set; }
         public string UserName { get; set; }
@@ -28,22 +25,18 @@ namespace BaseCore.DTO.AuthPlatform
         public int UserType { get; set; }
         public string Thumbnail { get; set; }
         public virtual ICollection<RoleDto> RoleUser { get; set; }
-
     }
 
     public class UserParam
     {
         public string Username { get; set; }
-        //public string Email { get; set; }
         public string Password { get; set; }
     }
 
     public class UserInfo
     {
         public string ListRoles { get; set; }
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
-
         public int AreaNo { get; set; }
         public string Username { get; set; }
         public string Email { get; set; }
@@ -59,7 +52,6 @@ namespace BaseCore.DTO.AuthPlatform
 
     public class InsertUserParam
     {
-        [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
         public string Name { get; set; }
         public string UserName { get; set; }
@@ -81,7 +73,6 @@ namespace BaseCore.DTO.AuthPlatform
         public int FilterType { get; set; }
         public string Thumbnail { get; set; }
         public ICollection<RoleDto> RoleUser { get; set; }
-
     }
 
     public class UpdateUsernameParam
