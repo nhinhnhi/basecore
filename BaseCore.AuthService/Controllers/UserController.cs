@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using BaseCore.Entities;
 using BaseCore.Services.Authen;
+using BaseCore.DTO.UserPlatform;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,27 +22,33 @@ namespace BaseCore.AuthService.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAll([FromQuery] string keyword = "", [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] string keyword = "",
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var (users, totalCount) = await _userService.Search(keyword, page, pageSize);
+            var (users, totalCount) = await _userService.SearchAsync(keyword, page, pageSize);
 
             var result = users.Select(u => new UserResponse
             {
                 Id = u.Id,
                 Username = u.UserName,
-                Name = u.Name,
+                FullName = u.FullName,
                 Email = u.Email,
                 Phone = u.Phone,
-                Position = u.Position,
+                Role = u.Role ?? "customer",
                 IsActive = u.IsActive,
-                UserType = u.UserType,
-                Created = u.Created
+                CreatedAt = u.Created,
+                AvatarUrl = u.AvatarUrl,
+                Position = u.Position,
+                Contact = u.Contact,
+                BrandId = u.BrandId
             });
 
             return Ok(new
             {
-                data = result,
+                items = result,
                 totalCount,
                 page,
                 pageSize,
@@ -50,9 +57,9 @@ namespace BaseCore.AuthService.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(string id)
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var user = await _userService.GetById(id);
+            var user = await _userService.GetByIdAsync(id);
             if (user == null)
             {
                 return NotFound(new { message = "User not found" });
@@ -62,148 +69,124 @@ namespace BaseCore.AuthService.Controllers
             {
                 Id = user.Id,
                 Username = user.UserName,
-                Name = user.Name,
+                FullName = user.FullName,
                 Email = user.Email,
                 Phone = user.Phone,
-                Position = user.Position,
+                Role = user.Role ?? "customer",
                 IsActive = user.IsActive,
-                UserType = user.UserType,
-                Created = user.Created
+                CreatedAt = user.Created,
+                AvatarUrl = user.AvatarUrl,
+                Position = user.Position,
+                Contact = user.Contact,
+                BrandId = user.BrandId
             });
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Create([FromBody] CreateUserRequest request)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
-            if (request == null)
+            if (dto == null)
             {
                 return BadRequest(new { message = "Invalid request" });
             }
 
-            if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
+            if (string.IsNullOrEmpty(dto.UserName) || string.IsNullOrEmpty(dto.Password))
             {
                 return BadRequest(new { message = "Username and password are required" });
             }
 
             try
             {
-                var user = new User
-                {
-                    UserName = request.Username,
-                    Name = request.Name ?? request.Username,
-                    Email = request.Email,
-                    Phone = request.Phone,
-                    Position = request.Position,
-                    UserType = request.UserType
-                };
-
-                var createdUser = await _userService.Create(user, request.Password);
+                var createdUser = await _userService.CreateAsync(dto);
 
                 return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, new UserResponse
                 {
                     Id = createdUser.Id,
                     Username = createdUser.UserName,
-                    Name = createdUser.Name,
+                    FullName = createdUser.FullName,
                     Email = createdUser.Email,
                     Phone = createdUser.Phone,
-                    Position = createdUser.Position,
+                    Role = createdUser.Role ?? "customer",
                     IsActive = createdUser.IsActive,
-                    UserType = createdUser.UserType,
-                    Created = createdUser.Created
+                    CreatedAt = createdUser.Created,
+                    AvatarUrl = createdUser.AvatarUrl,
+                    Position = createdUser.Position,
+                    Contact = createdUser.Contact,
+                    BrandId = createdUser.BrandId
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Failed to create user: " + ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Update(string id, [FromBody] UpdateUserRequest request)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
         {
-            if (request == null)
+            if (dto == null)
             {
                 return BadRequest(new { message = "Invalid request" });
             }
 
-            var existingUser = await _userService.GetById(id);
-            if (existingUser == null)
+            try
             {
-                return NotFound(new { message = "User not found" });
+                await _userService.UpdateByAdminAsync(id, dto);
+                
+                var updatedUser = await _userService.GetByIdAsync(id);
+                
+                return Ok(new UserResponse
+                {
+                    Id = updatedUser!.Id,
+                    Username = updatedUser.UserName,
+                    FullName = updatedUser.FullName,
+                    Email = updatedUser.Email,
+                    Phone = updatedUser.Phone,
+                    Role = updatedUser.Role ?? "customer",
+                    IsActive = updatedUser.IsActive,
+                    CreatedAt = updatedUser.Created,
+                    AvatarUrl = updatedUser.AvatarUrl,
+                    Position = updatedUser.Position,
+                    Contact = updatedUser.Contact,
+                    BrandId = updatedUser.BrandId
+                });
             }
-
-            existingUser.Name = request.Name ?? existingUser.Name;
-            existingUser.Email = request.Email ?? existingUser.Email;
-            existingUser.Phone = request.Phone ?? existingUser.Phone;
-            existingUser.Position = request.Position ?? existingUser.Position;
-            existingUser.UserType = request.UserType ?? existingUser.UserType;
-            existingUser.IsActive = request.IsActive ?? existingUser.IsActive;
-
-            await _userService.Update(existingUser, request.Password);
-
-            return Ok(new UserResponse
+            catch (Exception ex)
             {
-                Id = existingUser.Id,
-                Username = existingUser.UserName,
-                Name = existingUser.Name,
-                Email = existingUser.Email,
-                Phone = existingUser.Phone,
-                Position = existingUser.Position,
-                IsActive = existingUser.IsActive,
-                UserType = existingUser.UserType,
-                Created = existingUser.Created
-            });
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Delete(string id)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var existingUser = await _userService.GetById(id);
+            var existingUser = await _userService.GetByIdAsync(id);
             if (existingUser == null)
             {
                 return NotFound(new { message = "User not found" });
             }
 
-            await _userService.Delete(id);
-            return NoContent();
+            await _userService.DeleteAsync(id);
+            return Ok(new { message = "User deleted successfully" });
         }
     }
 
     public class UserResponse
     {
-        public string Id { get; set; }
-        public string Username { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Phone { get; set; }
-        public string Position { get; set; }
+        public Guid Id { get; set; }
+        public string Username { get; set; } = "";
+        public string FullName { get; set; } = "";
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string Role { get; set; } = "customer";
         public bool IsActive { get; set; }
-        public int UserType { get; set; }
-        public DateTime Created { get; set; }
-    }
-
-    public class CreateUserRequest
-    {
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Phone { get; set; }
-        public string Position { get; set; }
-        public int UserType { get; set; }
-    }
-
-    public class UpdateUserRequest
-    {
-        public string Password { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Phone { get; set; }
-        public string Position { get; set; }
-        public int? UserType { get; set; }
-        public bool? IsActive { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string? AvatarUrl { get; set; }
+        public string? Position { get; set; }
+        public string? Contact { get; set; }
+        public Guid? BrandId { get; set; }
     }
 }

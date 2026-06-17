@@ -1,16 +1,25 @@
+using BaseCore.DTO.ProductPlatform;
 using BaseCore.Entities;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace BaseCore.Services
 {
+    public record ProductListResult(List<Product> Items, int TotalCount);
+
     public interface IProductService
     {
-        Task<List<Product>> GetAllProductsAsync();
-        Task<Product> GetProductByIdAsync(int id);
-        Task<Product> CreateProductAsync(Product product);
-        Task UpdateProductAsync(Product product);
-        Task DeleteProductAsync(int id);
-        Task<(List<Product> Products, int TotalCount)> SearchAsync(string keyword, int? categoryId, int page, int pageSize);
+        Task<ProductListResult> SearchAsync(
+            string? keyword, Guid? categoryId,
+            decimal? minPrice, decimal? maxPrice,
+            int page, int pageSize);
+
+        Task<ProductListResult> GetByCategoryAsync(Guid categoryId, int page, int pageSize);
+
+        Task<Product?> GetByIdAsync(Guid id);
+
+        Task<Product> CreateAsync(ProductCreateDto dto);
+
+        Task<Product> UpdateAsync(Guid id, ProductUpdateDto dto);
+
+        Task DeleteAsync(Guid id);
     }
 }

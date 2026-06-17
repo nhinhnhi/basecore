@@ -1,0 +1,83 @@
+/* Giảm padding của content-wrapper để nội dung sát lề hơn */
+.content-wrapper {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+}
+
+/* Đảm bảo card chiếm toàn bộ chiều rộng */
+.card {
+    width: 100%;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Bảng không bị tràn, các ô co giãn vừa phải */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Thu nhỏ padding của các ô trong bảng (tuỳ chọn) */
+.table td, .table th {
+    padding: 0.6rem 0.5rem;
+    white-space: nowrap;
+}
+
+/* Trên màn hình nhỏ, cho phép xuống dòng */
+@media (max-width: 768px) {
+    .table td, .table th {
+        white-space: normal;
+    }
+}
+
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 40px;
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+.timeline-badge {
+    position: absolute;
+    left: -40px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 30px;
+    background: #ccc;
+    color: white;
+}
+.timeline-content {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.timeline {
+    position: relative;
+    padding: 10px 0;
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+.timeline-badge {
+    position: absolute;
+    left: -20px;
+    top: 0;
+    width: 40px;
+    text-align: center;
+}
+.timeline-panel {
+    margin-left: 30px;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}

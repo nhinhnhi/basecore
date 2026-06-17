@@ -1,0 +1,73 @@
+/* ============================================
+   MINIMAL DECOR – Global Styles
+   Inspired by decopro.vn layout
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Nunito:wght@400;600;700&display=swap');
+
+:root {
+  --primary: #1a5276;
+  --primary-dark: #154360;
+  --primary-light: #2980b9;
+  --accent: #e74c3c;
+  --bg: #f5f6f8;
+  --white: #fff;
+  --border: #e8e8e8;
+  --text: #333;
+  --text-muted: #888;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
+  background: #f5f6f8;
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+
+/* Bootstrap overrides */
+.btn-primary {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+.btn-primary:hover {
+  background: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+
+/* Links */
+a { color: var(--primary); }
+a:hover { color: var(--primary-dark); }
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, .4); }
+  50% { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up { animation: fadeInUp .5s ease both; }
+
+/* Section wrappers */
+main { min-height: 70vh; }
+
+/* Responsive images */
+img { max-width: 100%; }
+
+/* Utility */
+.text-primary-nd { color: var(--primary) !important; }
+.bg-primary-nd { background: var(--primary) !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f0f0f0; }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }

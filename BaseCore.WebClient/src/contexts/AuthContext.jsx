@@ -13,14 +13,15 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check for stored user on mount
         const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
-        if (storedUser && token) {
+        const storedToken = localStorage.getItem('token');
+        if (storedUser && storedToken) {
             setUser(JSON.parse(storedUser));
+            setToken(storedToken);
         }
         setLoading(false);
     }, []);
@@ -33,6 +34,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('token', userData.token);
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
+            setToken(userData.token);
 
             return { success: true };
         } catch (error) {
@@ -45,23 +47,13 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setUser(null);
+        setToken(null);
     };
 
-    const isAdmin = () => {
-        return user?.role === 'Admin';
-    };
-
-    const value = {
-        user,
-        login,
-        logout,
-        isAdmin,
-        isAuthenticated: !!user,
-        loading,
-    };
+    const isAdmin = user?.role === 'admin'; // boolean
 
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!user, loading, isAdmin }}>
             {children}
         </AuthContext.Provider>
     );

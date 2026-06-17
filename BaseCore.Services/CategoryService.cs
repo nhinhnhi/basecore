@@ -1,7 +1,5 @@
 using BaseCore.Entities;
 using BaseCore.Repository.EFCore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace BaseCore.Services
 {

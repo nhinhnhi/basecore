@@ -18,7 +18,14 @@ const Login = () => {
         const result = await login(username, password);
 
         if (result.success) {
-            navigate('/');
+            // Lấy user từ localStorage (hoặc từ result)
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : null;
+            if (user?.role === 'manufacturer') {
+                navigate('/manufacturer/products');
+            } else {
+                navigate('/');
+            }
         } else {
             setError(result.message);
         }

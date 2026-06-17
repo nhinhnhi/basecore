@@ -26,7 +26,7 @@ namespace BaseCore.AuthService.Controllers
                 return BadRequest(new { message = "Username and password are required" });
             }
 
-            var user = await _userService.Authenticate(request.Username, request.Password);
+            var user = await _userService.AuthenticateAsync(request.Username, request.Password);
 
             if (user == null)
             {
@@ -39,7 +39,7 @@ namespace BaseCore.AuthService.Controllers
                 TokenExpirationMinutes,
                 user.Id.ToString(),
                 user.UserName,
-                user.UserType == 1 ? "Admin" : "User"
+                user.Role ?? "customer"
             );
 
             return Ok(new LoginResponse
@@ -47,9 +47,10 @@ namespace BaseCore.AuthService.Controllers
                 Token = token,
                 UserId = user.Id.ToString(),
                 Username = user.UserName,
-                Name = user.Name,
+                FullName = user.FullName,
                 Email = user.Email,
-                Role = user.UserType == 1 ? "Admin" : "User",
+                Phone = user.Phone,
+                Role = user.Role ?? "customer",
                 ExpiresIn = TokenExpirationMinutes * 60
             });
         }
@@ -74,18 +75,24 @@ namespace BaseCore.AuthService.Controllers
 
             try
             {
-                var user = new BaseCore.Entities.User
+                // Tạo DTO từ request
+                var createDto = new BaseCore.DTO.UserPlatform.CreateUserDto
                 {
                     UserName = request.Username,
-                    Name = request.Name ?? request.Username,
-                    Email = request.Email,
-                    Phone = request.Phone,
-                    UserType = 0 // Default to regular user
+                    FullName = request.FullName ?? request.Username,
+                    Email = request.Email ?? "",
+                    Phone = request.Phone ?? "",
+                    Role = "customer",
+                    Password = request.Password
                 };
 
-                var createdUser = await _userService.Create(user, request.Password);
+                var createdUser = await _userService.CreateAsync(createDto);
 
-                return Ok(new { message = "Registration successful", userId = createdUser.Id });
+                return Ok(new { 
+                    message = "Registration successful", 
+                    userId = createdUser.Id,
+                    username = createdUser.UserName
+                });
             }
             catch (System.Exception ex)
             {
@@ -96,27 +103,28 @@ namespace BaseCore.AuthService.Controllers
 
     public class LoginRequest
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
     }
 
     public class LoginResponse
     {
-        public string Token { get; set; }
-        public string UserId { get; set; }
-        public string Username { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Role { get; set; }
+        public string Token { get; set; } = "";
+        public string UserId { get; set; } = "";
+        public string Username { get; set; } = "";
+        public string FullName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+        public string Role { get; set; } = "";
         public int ExpiresIn { get; set; }
     }
 
     public class RegisterRequest
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string Phone { get; set; }
+        public string Username { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
     }
 }

@@ -9,7 +9,7 @@ namespace BaseCore.Repository.EFCore
     public interface IOrderRepositoryEF : IRepository<Order>
     {
         Task<List<Order>> GetByUserAsync(Guid userId);
-        Task<Order?> GetWithDetailsAsync(int orderId);
+        Task<Order?> GetWithDetailsAsync(Guid orderId);
     }
 
     public class OrderRepositoryEF : Repository<Order>, IOrderRepositoryEF
@@ -26,7 +26,7 @@ namespace BaseCore.Repository.EFCore
                 .ToListAsync();
         }
 
-        public async Task<Order?> GetWithDetailsAsync(int orderId)
+        public async Task<Order?> GetWithDetailsAsync(Guid orderId)
         {
             return await _dbSet
                 .FirstOrDefaultAsync(o => o.Id == orderId);
@@ -36,22 +36,31 @@ namespace BaseCore.Repository.EFCore
     /// <summary>
     /// OrderDetail Repository using Entity Framework Core
     /// </summary>
-    public interface IOrderDetailRepositoryEF : IRepository<OrderDetail>
+    public interface IOrderItemRepositoryEF : IRepository<OrderItem>
     {
-        Task<List<OrderDetail>> GetByOrderAsync(int orderId);
+        Task<List<OrderItem>> GetByOrderIdAsync(Guid orderId);
+        Task<List<OrderItem>> GetByProductIdAsync(Guid productId);
     }
 
-    public class OrderDetailRepositoryEF : Repository<OrderDetail>, IOrderDetailRepositoryEF
+    public class OrderItemRepositoryEF : Repository<OrderItem>, IOrderItemRepositoryEF
     {
-        public OrderDetailRepositoryEF(AppDbContext context) : base(context)
+        public OrderItemRepositoryEF(AppDbContext context) : base(context)
         {
         }
 
-        public async Task<List<OrderDetail>> GetByOrderAsync(int orderId)
+        public async Task<List<OrderItem>> GetByOrderIdAsync(Guid orderId)
         {
             return await _dbSet
-                .Where(od => od.OrderId == orderId)
-                .Include(od => od.Product)
+                .Where(oi => oi.OrderId == orderId)
+                .Include(oi => oi.Product)
+                .Include(oi => oi.Images)
+                .ToListAsync();
+        }
+
+        public async Task<List<OrderItem>> GetByProductIdAsync(Guid productId)
+        {
+            return await _dbSet
+                .Where(oi => oi.ProductId == productId)
                 .ToListAsync();
         }
     }

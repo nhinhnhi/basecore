@@ -5,7 +5,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using BaseCore.Repository;
-using BaseCore.Repository.Authen;
 using BaseCore.Services.Authen;
 using System.Text;
 
@@ -63,14 +62,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// MongoDB Configuration
-var mongoConnectionString = builder.Configuration["MongoDB:ConnectionString"] ?? "mongodb://localhost:27017";
-var mongoDatabaseName = builder.Configuration["MongoDB:Database"] ?? "BaseCoreSales";
-builder.Services.AddSingleton(new MongoDbContext(mongoConnectionString, mongoDatabaseName));
-
 // DI for Authentication Services and Repositories only
+//builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // JWT Authentication Key
 var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? "YourSecretKeyForAuthenticationShouldBeLongEnough");
@@ -94,12 +88,7 @@ builder.Services.AddAuthentication(x =>
 
 var app = builder.Build();
 
-// Seed MongoDB data
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<MongoDbContext>();
-    await dbContext.SeedDataAsync();
-}
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

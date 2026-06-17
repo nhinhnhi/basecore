@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { productApi, userApi, categoryApi } from '../services/api';
+import { productApi, userApi, categoryApi, orderApi, brandApi, inventoryApi, couponApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
@@ -7,6 +7,10 @@ const Dashboard = () => {
         products: 0,
         categories: 0,
         users: 0,
+        orders: 0,
+        brands: 0,
+        inventory: 0, 
+        coupon: 0,
     });
     const [loading, setLoading] = useState(true);
     const { isAdmin } = useAuth();
@@ -17,13 +21,17 @@ const Dashboard = () => {
 
     const loadStats = async () => {
         try {
-            const [productsRes, categoriesRes] = await Promise.all([
+            const [productsRes, categoriesRes, ordersRes, brandRes, inventoryRes, couponRes] = await Promise.all([
                 productApi.getAll(),
                 categoryApi.getAll(),
+                orderApi.getAll({ pageSize: 1 }),
+                brandApi.getAll(),
+                inventoryApi.getAll({pageSize: 1}),
+                couponApi.getAll(),
             ]);
 
             let usersCount = 0;
-            if (isAdmin()) {
+            if (isAdmin) {
                 try {
                     const usersRes = await userApi.getAll({ page: 1, pageSize: 1 });
                     usersCount = usersRes.data.totalCount || 0;
@@ -32,11 +40,20 @@ const Dashboard = () => {
                 }
             }
 
+            const totalInventoryCount = inventoryRes.data?.totalCount || inventoryRes.data?.length || 0;
+
+            const couponCount = couponRes.data?.totalCount || couponRes.data?.items?.length || couponRes.data?.length || 0;
+
             setStats({
-                products: productsRes.data?.totalCount || productsRes.data?.items?.length || productsRes.data?.length || 0,
-                categories: categoriesRes.data?.length || 0,
+                products: productsRes.data?.totalCount || productList.length || 0,
+                categories: categoriesRes.data?.length || categoriesRes.data?.totalCount || 0,
                 users: usersCount,
+                orders: ordersRes.data?.totalCount || 0,
+                brands: brandRes.data?.totalCount || brandRes.data?.length || 0, // Lấy luôn từ brandRes ở trên
+                inventory: totalInventoryCount, // 2. Gán giá trị tính toán được vào state
+                coupon: couponCount,
             });
+            
         } catch (error) {
             console.error('Failed to load stats:', error);
         } finally {
@@ -50,7 +67,7 @@ const Dashboard = () => {
                 <div className="container-fluid">
                     <div className="row mb-2">
                         <div className="col-sm-6">
-                            <h1 className="m-0">Dashboard</h1>
+                            <h1 className="m-0">Bảng điều khiển</h1>
                         </div>
                     </div>
                 </div>
@@ -66,53 +83,108 @@ const Dashboard = () => {
                         </div>
                     ) : (
                         <div className="row">
-                            <div className="col-lg-3 col-6">
+                            {/* Khối Sản Phẩm */}
+                            <div className="col-lg-3 col-6 mb-3">
                                 <div className="small-box bg-info">
                                     <div className="inner">
                                         <h3>{stats.products}</h3>
-                                        <p>Products</p>
+                                        <p>Sản phẩm</p>
                                     </div>
-                                    <div className="icon">
-                                        <i className="fas fa-box"></i>
-                                    </div>
+                                    <div className="icon"><i className="fas fa-box"></i></div>
                                     <a href="/products" className="small-box-footer">
                                         More info <i className="fas fa-arrow-circle-right"></i>
                                     </a>
                                 </div>
                             </div>
-                            <div className="col-lg-3 col-6">
+
+                            {/* Khối Danh Mục */}
+                            <div className="col-lg-3 col-6 mb-3">
                                 <div className="small-box bg-success">
                                     <div className="inner">
                                         <h3>{stats.categories}</h3>
-                                        <p>Categories</p>
+                                        <p>Danh mục</p>
                                     </div>
-                                    <div className="icon">
-                                        <i className="fas fa-tags"></i>
-                                    </div>
+                                    <div className="icon"><i className="fas fa-tags"></i></div>
                                     <a href="/categories" className="small-box-footer">
                                         More info <i className="fas fa-arrow-circle-right"></i>
                                     </a>
                                 </div>
                             </div>
-                            {isAdmin() && (
-                                <div className="col-lg-3 col-6">
+
+                            {/* Khối Đơn Hàng */}
+                            <div className="col-lg-3 col-6 mb-3">
+                                <div className="small-box bg-danger">
+                                    <div className="inner">
+                                        <h3>{stats.orders}</h3>
+                                        <p>Đơn hàng</p>
+                                    </div>
+                                    <div className="icon"><i className="fas fa-shopping-cart"></i></div>
+                                    <a href="/orders" className="small-box-footer">
+                                        More info <i className="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Khối Khách Hàng (Admin) */}
+                            {isAdmin && (
+                                <div className="col-lg-3 col-6 mb-3">
                                     <div className="small-box bg-warning">
                                         <div className="inner">
                                             <h3>{stats.users}</h3>
-                                            <p>Users</p>
+                                            <p>Khách hàng</p>
                                         </div>
-                                        <div className="icon">
-                                            <i className="fas fa-users"></i>
-                                        </div>
+                                        <div className="icon"><i className="fas fa-users"></i></div>
                                         <a href="/users" className="small-box-footer">
                                             More info <i className="fas fa-arrow-circle-right"></i>
                                         </a>
                                     </div>
                                 </div>
                             )}
+
+                            {/* Khối Thương Hiệu */}
+                            <div className="col-lg-3 col-6 mb-3">
+                                <div className="small-box bg-purple">
+                                    <div className="inner">
+                                        <h3>{stats.brands}</h3>
+                                        <p>Thương hiệu</p>
+                                    </div>
+                                    <div className="icon"><i className="fas fa-trademark"></i></div>
+                                    <a href="/brands" className="small-box-footer">
+                                        More info <i className="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            {/* Khối Tồn Kho - ĐÃ SỬA LỖI ĐỊNH DẠNG */}
+                            <div className="col-lg-3 col-6 mb-3">
+                                <div className="small-box bg-secondary"> {/* Đổi sang màu xám ngầu hơn hoặc giữ bg-danger tùy bạn */}
+                                    <div className="inner">
+                                        <h3>{stats.inventory}</h3> {/* Đã sửa từ inventorys thành inventory */}
+                                        <p>Tồn kho</p>
+                                    </div>
+                                    <div className="icon"><i className="fas fa-warehouse"></i></div> {/* Thay bằng icon Nhà kho */}
+                                    <a href="/inventory" className="small-box-footer"> {/* Đường dẫn chuẩn tới trang kho */}
+                                        More info <i className="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div className="col-lg-3 col-6 mb-3">
+                                <div className="small-box bg-orange">
+                                    <div className="inner">
+                                        <h3>{stats.coupon}</h3>
+                                        <p>Mã giảm giá</p>
+                                    </div>
+                                    <div className="icon"><i className="fas fa-ticket-alt"></i></div>
+                                    <a href="/coupons" className="small-box-footer">
+                                        More info <i className="fas fa-arrow-circle-right"></i>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     )}
 
+                    {/* Khối Welcome Row */}
                     <div className="row">
                         <div className="col-12">
                             <div className="card">
@@ -126,13 +198,6 @@ const Dashboard = () => {
                                         <li><strong>Frontend:</strong> React 18 with React Router</li>
                                         <li><strong>UI:</strong> AdminLTE 3 with Bootstrap 4</li>
                                         <li><strong>Authentication:</strong> JWT Bearer Token</li>
-                                    </ul>
-                                    <p>Features include:</p>
-                                    <ul>
-                                        <li>User Authentication (Login/Logout)</li>
-                                        <li>Product Management (CRUD with Search & Pagination)</li>
-                                        <li>Category Management</li>
-                                        <li>User Management (Admin only)</li>
                                     </ul>
                                 </div>
                             </div>

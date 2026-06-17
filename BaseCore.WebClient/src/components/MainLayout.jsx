@@ -24,15 +24,17 @@ const MainLayout = ({ children }) => {
                             <i className="fas fa-bars"></i>
                         </a>
                     </li>
-                    <li className="nav-item d-none d-sm-inline-block">
-                        <Link to="/" className="nav-link">Home</Link>
-                    </li>
+                    {user?.role === 'admin' && (
+                        <li className="nav-item d-none d-sm-inline-block">
+                            <Link to="/" className="nav-link">Home</Link>
+                        </li>
+                    )}
                 </ul>
 
                 <ul className="navbar-nav ml-auto">
                     <li className="nav-item dropdown">
                         <a className="nav-link" data-toggle="dropdown" href="#">
-                            <i className="far fa-user"></i> {user?.name || user?.username}
+                            <i className="far fa-user"></i> {user?.fullName || user?.userName || user?.username}
                         </a>
                         <div className="dropdown-menu dropdown-menu-right">
                             <span className="dropdown-item dropdown-header">
@@ -44,12 +46,19 @@ const MainLayout = ({ children }) => {
                             </button>
                         </div>
                     </li>
+                    {user?.role === 'admin' && (
+                        <li className="nav-item">
+                            <a className="nav-link" href="http://localhost:5173" target="_blank" rel="noopener noreferrer">
+                                <i className="fas fa-store"></i> Cửa hàng
+                            </a>
+                        </li>
+                    )}
                 </ul>
             </nav>
 
-            {/* Sidebar */}
+            {/* Sidebar (giữ nguyên) */}
             <aside className="main-sidebar sidebar-dark-primary elevation-4">
-                <Link to="/" className="brand-link">
+                <Link to={user?.role === 'manufacturer' ? '/manufacturer/products' : '/'} className="brand-link">
                     <span className="brand-text font-weight-light ml-3">
                         <b>Store</b> Sales
                     </span>
@@ -61,35 +70,69 @@ const MainLayout = ({ children }) => {
                             <i className="fas fa-user-circle fa-2x text-light"></i>
                         </div>
                         <div className="info">
-                            <Link to="#" className="d-block">{user?.name || user?.username}</Link>
+                            <Link to="#" className="d-block">{user?.fullName || user?.userName || user?.username}</Link>
                         </div>
                     </div>
 
                     <nav className="mt-2">
                         <ul className="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                            <li className="nav-item">
-                                <Link to="/" className={`nav-link ${isActive('/')}`}>
-                                    <i className="nav-icon fas fa-tachometer-alt"></i>
-                                    <p>Dashboard</p>
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link to="/products" className={`nav-link ${isActive('/products')}`}>
-                                    <i className="nav-icon fas fa-box"></i>
-                                    <p>Products</p>
-                                </Link>
-                            </li>
-                            <li className="nav-item">
-                                <Link to="/categories" className={`nav-link ${isActive('/categories')}`}>
-                                    <i className="nav-icon fas fa-tags"></i>
-                                    <p>Categories</p>
-                                </Link>
-                            </li>
-                            {isAdmin() && (
+                            {user?.role === 'admin' && (
+                                <>
+                                    <li className="nav-item">
+                                        <Link to="/" className={`nav-link ${isActive('/')}`}>
+                                            <i className="nav-icon fas fa-tachometer-alt"></i>
+                                            <p>Bảng điều khiển</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/products" className={`nav-link ${isActive('/products')}`}>
+                                            <i className="nav-icon fas fa-box"></i>
+                                            <p>Sản Phẩm</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/categories" className={`nav-link ${isActive('/categories')}`}>
+                                            <i className="nav-icon fas fa-tags"></i>
+                                            <p>Danh mục</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/brands" className={`nav-link ${isActive('/brands')}`}>
+                                            <i className="nav-icon fas fa-trademark"></i>
+                                            <p>Thương hiệu</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/users" className={`nav-link ${isActive('/users')}`}>
+                                            <i className="nav-icon fas fa-users"></i>
+                                            <p>Khách hàng</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/orders" className={`nav-link ${isActive('/orders')}`}>
+                                            <i className="nav-icon fas fa-shopping-cart"></i>
+                                            <p>Đơn hàng</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/inventory" className={`nav-link ${isActive('/inventory')}`}>
+                                            <i className="nav-icon fas fa-warehouse"></i>
+                                            <p>Tồn kho</p>
+                                        </Link>
+                                    </li>
+                                    <li className="nav-item">
+                                        <Link to="/coupons" className={`nav-link ${isActive('/coupons')}`}>
+                                            <i className="nav-icon fas fa-ticket-alt"></i>
+                                            <p>Mã giảm giá</p>
+                                        </Link>
+                                    </li>
+                                </>
+                            )}
+                            {user?.role === 'manufacturer' && (
                                 <li className="nav-item">
-                                    <Link to="/users" className={`nav-link ${isActive('/users')}`}>
-                                        <i className="nav-icon fas fa-users"></i>
-                                        <p>Users</p>
+                                    <Link to="/manufacturer/products" className={`nav-link ${isActive('/manufacturer/products')}`}>
+                                        <i className="nav-icon fas fa-box"></i>
+                                        <p>Sản phẩm của tôi</p>
                                     </Link>
                                 </li>
                             )}

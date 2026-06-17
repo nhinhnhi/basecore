@@ -58,6 +58,10 @@ export const productApi = {
     create: (data) => api.post('/products', data),
     update: (id, data) => api.put(`/products/${id}`, data),
     delete: (id) => api.delete(`/products/${id}`),
+    getManufacturerProducts: (params) => api.get('/manufacturer/products', { params }),
+    createManufacturerProduct: (data) => api.post('/manufacturer/products', data),
+    updateManufacturerProduct: (id, data) => api.put(`/manufacturer/products/${id}`, data),
+    deleteManufacturerProduct: (id) => api.delete(`/manufacturer/products/${id}`),
 };
 
 // Category API
@@ -71,9 +75,46 @@ export const categoryApi = {
 
 // Order API
 export const orderApi = {
-    create: (data) => api.post('/orders', data),
-    getMyOrders: () => api.get('/orders'),
-    getById: (id) => api.get(`/orders/${id}`),
+    getAll: (params) => api.get('/Orders/all', { params }),
+    getById: (id) => api.get(`/Orders/${id}`),
+    updateStatus: (id, data) => api.put(`/Orders/${id}/status`, data),
+    create: (data) => api.post('/Orders', data),      
+    delete: (id) => api.delete(`/Orders/${id}`)
 };
 
+export const brandApi = {
+    getAll: (params) => api.get('/brands', { params }),
+    getById: (id) => api.get(`/brands/${id}`),
+    create: (data) => api.post('/brands', data),
+    update: (id, data) => api.put(`/brands/${id}`, data),
+    delete: (id) => api.delete(`/brands/${id}`),
+};
+
+export const manufacturerProductApi = {
+    getAll: (params) => api.get('/manufacturer/products', { params }),
+    getById: (id) => api.get(`/manufacturer/products/${id}`),
+    create: (data) => api.post('/manufacturer/products', data),
+    update: (id, data) => api.put(`/manufacturer/products/${id}`, data),
+    delete: (id) => api.delete(`/manufacturer/products/${id}`),
+};
+
+export const inventoryApi = {
+    getAll: (params) => api.get('/inventory', { params }),
+    getById: (id) => api.get(`/inventory/${id}`),
+    create: (data) => api.post('/inventory', data),
+    update: (id, data) => api.put(`/inventory/${id}`, data),
+    delete: (id) => api.delete(`/inventory/${id}`),
+};
+
+// Coupon API
+export const couponApi = {
+    getAll: (params) => api.get('/coupons', { params }),
+    getAvailable: () => api.get('/coupons/available'),
+    getMyCoupons: () => api.get('/coupons/my-coupons'),
+    save: (couponId) => api.post('/coupons/save', { couponId }),
+    validate: (code, orderAmount) => api.post('/coupons/validate', { code, orderAmount }),
+    create: (data) => api.post('/coupons', data),
+    update: (id, data) => api.put(`/coupons/${id}`, data),
+    delete: (id) => api.delete(`/coupons/${id}`),
+};
 export default api;
