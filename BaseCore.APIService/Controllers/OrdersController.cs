@@ -1,189 +1,143 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using BaseCore.Entities;
-using BaseCore.Repository.EFCore;
+using BaseCore.Services;
+using BaseCore.DTO.OrderPlatform;
 using System.Security.Claims;
 
 namespace BaseCore.APIService.Controllers
 {
-    /// <summary>
-    /// Order API Controller
-    /// Teaching: RESTful API, Business Logic, Authentication (Bài 10, 11)
-    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
     public class OrdersController : ControllerBase
     {
-        private readonly IOrderRepositoryEF _orderRepository;
-        private readonly IOrderDetailRepositoryEF _orderDetailRepository;
-        private readonly IProductRepositoryEF _productRepository;
+        private readonly IOrderService _orderService;
 
-        public OrdersController(
-            IOrderRepositoryEF orderRepository,
-            IOrderDetailRepositoryEF orderDetailRepository,
-            IProductRepositoryEF productRepository)
+        public OrdersController(IOrderService orderService)
         {
-            _orderRepository = orderRepository;
-            _orderDetailRepository = orderDetailRepository;
-            _productRepository = productRepository;
+            _orderService = orderService;
         }
 
-        /// <summary>
-        /// Get orders for current user
-        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetMyOrders()
+        public async Task<IActionResult> GetMyOrders(
+            [FromQuery] string? status,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId)) return Unauthorized();
 
-            var orders = await _orderRepository.GetByUserAsync(userGuid);
-            return Ok(orders);
+            var (items, totalCount) = await _orderService.GetMyOrdersAsync(userId, status, page, pageSize);
+            return Ok(new { items, totalCount, page, pageSize,
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize) });
         }
 
-        /// <summary>
-        /// Get all orders (Admin only)
-        /// </summary>
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllOrders()
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> GetAllOrders(
+            [FromQuery] int page = 1, [FromQuery] int pageSize = 10,
+            [FromQuery] string? status = null, [FromQuery] string? keyword = null,
+            [FromQuery] string? paymentMethod = null,
+            [FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
         {
-            var orders = await _orderRepository.GetAllAsync();
-            return Ok(orders);
+            var (items, totalCount) = await _orderService
+                .GetAllOrdersAsync(page, pageSize, status, keyword, paymentMethod, fromDate, toDate);
+            return Ok(new { items, totalCount, page, pageSize,
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize) });
         }
 
-        /// <summary>
-        /// Get order by ID
-        /// </summary>
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(Guid id)
         {
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound(new { message = "Order not found" });
-
-            var details = await _orderDetailRepository.GetByOrderAsync(id);
-            return Ok(new { order, details });
+            var result = await _orderService.GetOrderDetailAsync(id);
+            return result == null ? NotFound(new { message = "Order not found" }) : Ok(result);
         }
 
-        /// <summary>
-        /// Create new order
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateOrderDto dto)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId) || !Guid.TryParse(userId, out var userGuid))
-                return Unauthorized();
+            if (!TryGetUserId(out var userId)) return Unauthorized();
 
-            // Validate products and calculate total
-            decimal totalAmount = 0;
-            var orderDetails = new List<OrderDetail>();
+            // Validate cơ bản (model state / guard clauses)
+            if (dto.Items == null || !dto.Items.Any())
+                return BadRequest(new { message = "Đơn hàng phải có ít nhất 1 sản phẩm" });
+            if (string.IsNullOrEmpty(dto.RecipientName))
+                return BadRequest(new { message = "Vui lòng nhập tên người nhận" });
+            if (string.IsNullOrEmpty(dto.RecipientPhone))
+                return BadRequest(new { message = "Vui lòng nhập số điện thoại người nhận" });
 
-            foreach (var item in dto.Items)
+            try
             {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product == null)
-                    return BadRequest(new { message = $"Product {item.ProductId} not found" });
+                var (order, items, discountAmount, couponCode) =
+                    await _orderService.CreateOrderAsync(userId, dto);
 
-                if (product.Stock < item.Quantity)
-                    return BadRequest(new { message = $"Insufficient stock for {product.Name}" });
-
-                totalAmount += product.Price * item.Quantity;
-                orderDetails.Add(new OrderDetail
-                {
-                    ProductId = item.ProductId,
-                    Quantity = item.Quantity,
-                    UnitPrice = product.Price
+                var resultItems = items.Select(i => new {
+                    i.Id, i.OrderId, i.ProductId,
+                    i.ProductNameSnapshot, i.ImageUrlSnapshot,
+                    i.Quantity, i.UnitPrice, i.Subtotal
                 });
 
-                // Update stock
-                product.Stock -= item.Quantity;
-                await _productRepository.UpdateAsync(product);
+                return CreatedAtAction(nameof(GetById), new { id = order.Id },
+                    new { order, items = resultItems, discountAmount, couponCode });
             }
-
-            var order = new Order
+            catch (InvalidOperationException ex)
             {
-                UserId = userGuid,
-                OrderDate = DateTime.Now,
-                TotalAmount = totalAmount,
-                Status = "Pending",
-                ShippingAddress = dto.ShippingAddress ?? ""
-            };
-
-            await _orderRepository.AddAsync(order);
-
-            // Add order details
-            foreach (var detail in orderDetails)
-            {
-                detail.OrderId = order.Id;
-                await _orderDetailRepository.AddAsync(detail);
+                return BadRequest(new { message = ex.Message });
             }
-
-            return CreatedAtAction(nameof(GetById), new { id = order.Id }, new { order, details = orderDetails });
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Tạo đơn hàng thất bại",
+                    error = ex.Message, inner = ex.InnerException?.Message });
+            }
         }
 
-        /// <summary>
-        /// Update order status
-        /// </summary>
         [HttpPut("{id}/status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDto dto)
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusDto dto)
         {
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound(new { message = "Order not found" });
-
-            order.Status = dto.Status;
-            await _orderRepository.UpdateAsync(order);
-
-            return Ok(order);
-        }
-
-        /// <summary>
-        /// Cancel order
-        /// </summary>
-        [HttpPut("{id}/cancel")]
-        public async Task<IActionResult> CancelOrder(int id)
-        {
-            var order = await _orderRepository.GetByIdAsync(id);
-            if (order == null) return NotFound(new { message = "Order not found" });
-
-            if (order.Status == "Completed")
-                return BadRequest(new { message = "Cannot cancel completed order" });
-
-            // Restore stock
-            var details = await _orderDetailRepository.GetByOrderAsync(id);
-            foreach (var detail in details)
+            try
             {
-                var product = await _productRepository.GetByIdAsync(detail.ProductId);
-                if (product != null)
-                {
-                    product.Stock += detail.Quantity;
-                    await _productRepository.UpdateAsync(product);
-                }
+                var order = await _orderService.UpdateStatusAsync(id, dto.Status, dto.AdminNote);
+                return Ok(new { message = "Cập nhật thành công", order });
             }
-
-            order.Status = "Cancelled";
-            await _orderRepository.UpdateAsync(order);
-
-            return Ok(new { message = "Order cancelled successfully", order });
+            catch (KeyNotFoundException) { return NotFound(new { message = "Order not found" }); }
+            catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
         }
-    }
 
-    public class CreateOrderDto
-    {
-        public List<OrderItemDto> Items { get; set; } = new();
-        public string? ShippingAddress { get; set; }
-    }
+        [HttpPut("{id}/cancel")]
+        public async Task<IActionResult> CancelOrder(Guid id, [FromBody] CancelOrderDto? dto)
+        {
+            if (!TryGetUserId(out var userId)) return Unauthorized();
 
-    public class OrderItemDto
-    {
-        public int ProductId { get; set; }
-        public int Quantity { get; set; }
-    }
+            try
+            {
+                var order = await _orderService.CancelOrderAsync(id, userId, dto?.Reason);
+                return Ok(new { message = "Đã hủy đơn hàng thành công", order });
+            }
+            catch (KeyNotFoundException)          { return NotFound(new { message = "Order not found" }); }
+            catch (UnauthorizedAccessException)   { return Forbid(); }
+            catch (InvalidOperationException ex)  { return BadRequest(new { message = ex.Message }); }
+        }
 
-    public class UpdateStatusDto
-    {
-        public string Status { get; set; } = "";
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> DeleteOrder(Guid id)
+        {
+            try
+            {
+                await _orderService.DeleteOrderAsync(id);
+                return Ok(new { message = "Đã xóa đơn hàng" });
+            }
+            catch (KeyNotFoundException) { return NotFound(new { message = "Order not found" }); }
+        }
+
+        // ─── Helper ───────────────────────────────────────────────────────────
+        private bool TryGetUserId(out Guid userId)
+            {
+                var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                        ?? User.FindFirst("sub")?.Value
+                        ?? User.FindFirst("nameid")?.Value;
+
+                return Guid.TryParse(claim, out userId);
+            }
     }
 }

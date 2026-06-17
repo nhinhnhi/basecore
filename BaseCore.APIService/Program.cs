@@ -5,8 +5,9 @@ using Microsoft.OpenApi.Models;
 using BaseCore.Repository;
 using BaseCore.Repository.EFCore;
 using System.Text;
-using BaseCore.Common; // TokenHelper
-using BaseCore.Entities;    // User, Category, Product
+using BaseCore.Common;
+using BaseCore.Entities;
+using BaseCore.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,18 +16,20 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
 builder.Services.AddEndpointsApiExplorer();
+
 
 // Swagger Configuration
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "BaseCore API Service",
+        Title = "BaseCore API Service - Decor Store",
         Version = "v1",
-        Description = "Business Logic Microservice - Products, Categories, Orders (Bài 10, 11)"
+        Description = "API for Decor Store - Products, Categories, Orders, Users"
     });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -64,11 +67,19 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ConnectedDb"));
 });
 
-// Repository Registration - Products, Categories, Orders
+// Repository Registration
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProductRepositoryEF, ProductRepositoryEF>();
 builder.Services.AddScoped<ICategoryRepositoryEF, CategoryRepositoryEF>();
 builder.Services.AddScoped<IOrderRepositoryEF, OrderRepositoryEF>();
-builder.Services.AddScoped<IOrderDetailRepositoryEF, OrderDetailRepositoryEF>();
+builder.Services.AddScoped<IOrderItemRepositoryEF, OrderItemRepositoryEF>();
+builder.Services.AddScoped<IRepository<Brand>, Repository<Brand>>();
+builder.Services.AddScoped<ICouponRepositoryEF, CouponRepositoryEF>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ICouponService, CouponService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IBrandRepository, BrandRepository>();
+builder.Services.AddScoped<IBrandService, BrandService>();
 
 // JWT Authentication
 var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? "YourSecretKeyForAuthenticationShouldBeLongEnough");
@@ -105,72 +116,398 @@ using (var scope = app.Services.CreateScope())
         string hashedPassword = TokenHelper.HashPassword("admin123", out salt);
         var admin = new User
         {
-            Id = Guid.NewGuid().ToString(),
+            Id = Guid.NewGuid(),
             UserName = "admin",
-            Password = hashedPassword,
+            PasswordHash = hashedPassword,
             Salt = salt,
-            Name = "Administrator",
-            Email = "admin@example.com",
-            Phone = "",
+            FullName = "Administrator",
+            Email = "admin@decorstore.com",
+            Phone = "0123456789",
             Contact = "",
             Position = "Admin",
-            Image = "",
+            AvatarUrl = "",           // ← THÊM DÒNG NÀY (không cho phép null)
+            Role = "admin",
             IsActive = true,
-            UserType = 1,
+            IsEmailVerified = true,
+            EmailVerifiedAt = DateTime.UtcNow,
             Created = DateTime.UtcNow
         };
         db.Users.Add(admin);
         db.SaveChanges();
-        Console.WriteLine("Admin user created: admin / admin123");
+        Console.WriteLine("✅ Admin user created: admin / admin123");
     }
-
-    // Seed categories if none exist
+        // Seed categories first
     if (!db.Categories.Any())
     {
         var categories = new List<Category>
         {
-            new Category { Name = "Electronics", Description = "Electronic devices and gadgets" },
-            new Category { Name = "Clothing", Description = "Apparel and fashion items" },
-            new Category { Name = "Books", Description = "Books and publications" },
-            new Category { Name = "Home & Garden", Description = "Home and garden products" },
-            new Category { Name = "Sports", Description = "Sports equipment and accessories" }
+            new Category { 
+                Name = "Đèn trang trí", 
+                Slug = "den-trang-tri", 
+                Description = "Đèn bàn, đèn thả, đèn đứng",
+                MetaDescription = "Đèn trang trí đẹp cho không gian sống",
+                MetaTitle = "Đèn trang trí - Decor Store",
+                IconClass = "fas fa-lightbulb",
+                ImageUrl = "/img/categories/den-trang-tri.jpg",
+                IsActive = true,
+                ShowInMenu = true,
+                SortOrder = 1,
+                Created = DateTime.UtcNow
+            },
+            new Category { 
+                Name = "Tranh treo tường", 
+                Slug = "tranh-treo-tuong", 
+                Description = "Tranh trừu tượng, phong cảnh",
+                MetaDescription = "Tranh treo tường nghệ thuật",
+                MetaTitle = "Tranh treo tường - Decor Store",
+                IconClass = "fas fa-palette",
+                ImageUrl = "/img/categories/tranh-treo-tuong.jpg",
+                IsActive = true,
+                ShowInMenu = true,
+                SortOrder = 2,
+                Created = DateTime.UtcNow
+            },
+            new Category { 
+                Name = "Gương", 
+                Slug = "guong", 
+                Description = "Gương trang trí",
+                MetaDescription = "Gương trang trí đẹp",
+                MetaTitle = "Gương - Decor Store",
+                IconClass = "fas fa-image",
+                ImageUrl = "/img/categories/guong.jpg",
+                IsActive = true,
+                ShowInMenu = true,
+                SortOrder = 3,
+                Created = DateTime.UtcNow
+            },
+            new Category { 
+                Name = "Lọ hoa & Chậu cây", 
+                Slug = "lo-hoa-chau-cay", 
+                Description = "Lọ hoa gốm sứ, chậu cây cảnh",
+                MetaDescription = "Lọ hoa và chậu cây trang trí",
+                MetaTitle = "Lọ hoa & Chậu cây - Decor Store",
+                IconClass = "fas fa-seedling",
+                ImageUrl = "/img/categories/lo-hoa.jpg",
+                IsActive = true,
+                ShowInMenu = true,
+                SortOrder = 4,
+                Created = DateTime.UtcNow
+            },
+            new Category { 
+                Name = "Phụ kiện trang trí", 
+                Slug = "phu-kien-trang-tri", 
+                Description = "Đồng hồ, khung ảnh, nến",
+                MetaDescription = "Phụ kiện trang trí nhà cửa",
+                MetaTitle = "Phụ kiện trang trí - Decor Store",
+                IconClass = "fas fa-gift",
+                ImageUrl = "/img/categories/phu-kien.jpg",
+                IsActive = true,
+                ShowInMenu = true,
+                SortOrder = 5,
+                Created = DateTime.UtcNow
+            }
         };
         db.Categories.AddRange(categories);
         db.SaveChanges();
-        Console.WriteLine("Seeded 5 categories.");
+        Console.WriteLine("✅ Seeded 5 categories.");
     }
-
-    // Seed products if none exist
-    if (!db.Products.Any())
-    {
-        var products = new List<Product>
+        // Seed brands
+        if (!db.Brands.Any())
         {
-            new Product { Name = "Laptop Dell XPS 15", Price = 35000000, Stock = 10, CategoryId = 1, Description = "High-performance laptop", ImageUrl = "" },
-            new Product { Name = "iPhone 15 Pro", Price = 28000000, Stock = 15, CategoryId = 1, Description = "Latest Apple smartphone", ImageUrl = "" },
-            new Product { Name = "Samsung Galaxy S24 Ultra", Price = 30000000, Stock = 12, CategoryId = 1, Description = "Android flagship", ImageUrl = "" },
-            new Product { Name = "MacBook Air M3", Price = 32000000, Stock = 8, CategoryId = 1, Description = "Apple laptop", ImageUrl = "" },
-            new Product { Name = "iPad Pro 12.9", Price = 25000000, Stock = 7, CategoryId = 1, Description = "Tablet with M2 chip", ImageUrl = "" },
-            new Product { Name = "Men's T-Shirt", Price = 250000, Stock = 100, CategoryId = 2, Description = "Cotton T-shirt", ImageUrl = "" },
-            new Product { Name = "Women's Jeans", Price = 600000, Stock = 50, CategoryId = 2, Description = "Slim fit jeans", ImageUrl = "" },
-            new Product { Name = "Winter Jacket", Price = 1500000, Stock = 30, CategoryId = 2, Description = "Warm jacket", ImageUrl = "" },
-            new Product { Name = "Running Shoes", Price = 1200000, Stock = 40, CategoryId = 2, Description = "Nike Air", ImageUrl = "" },
-            new Product { Name = "Leather Bag", Price = 800000, Stock = 25, CategoryId = 2, Description = "Handbag", ImageUrl = "" },
-            new Product { Name = "C# Programming Book", Price = 450000, Stock = 60, CategoryId = 3, Description = "Learn C#", ImageUrl = "" },
-            new Product { Name = "ASP.NET Core Guide", Price = 550000, Stock = 45, CategoryId = 3, Description = "Web development", ImageUrl = "" },
-            new Product { Name = "React Essentials", Price = 400000, Stock = 50, CategoryId = 3, Description = "Frontend library", ImageUrl = "" },
-            new Product { Name = "SQL Server Bible", Price = 600000, Stock = 35, CategoryId = 3, Description = "Database guide", ImageUrl = "" },
-            new Product { Name = "Design Patterns", Price = 500000, Stock = 40, CategoryId = 3, Description = "Software architecture", ImageUrl = "" },
-            new Product { Name = "Garden Shovel", Price = 150000, Stock = 80, CategoryId = 4, Description = "Digging tool", ImageUrl = "" },
-            new Product { Name = "Lawn Mower", Price = 3500000, Stock = 10, CategoryId = 4, Description = "Electric mower", ImageUrl = "" },
-            new Product { Name = "Flower Pot Set", Price = 200000, Stock = 120, CategoryId = 4, Description = "Ceramic pots", ImageUrl = "" },
-            new Product { Name = "Football", Price = 300000, Stock = 90, CategoryId = 5, Description = "Size 5", ImageUrl = "" },
-            new Product { Name = "Tennis Racket", Price = 1200000, Stock = 20, CategoryId = 5, Description = "Professional", ImageUrl = "" }
-        };
-        db.Products.AddRange(products);
-        db.SaveChanges();
-        Console.WriteLine($"✅ Seeded {products.Count} products.");
-    }
+            var brands = new List<Brand>
+            {
+                new Brand { Name = "Apple", Slug = "apple", Description = "", LogoUrl = "", WebsiteUrl = "", IsActive = true },
+                new Brand { Name = "Samsung", Slug = "samsung", Description = "", LogoUrl = "", WebsiteUrl = "", IsActive = true }
+            };
+            db.Brands.AddRange(brands);
+            db.SaveChanges();
+            Console.WriteLine("✅ Seeded brands.");
+        }
+
+        // Seed products - CHỈ 1 BLOCK DUY NHẤT
+        if (!db.Products.Any())
+        {
+            var denTrangTriId = db.Categories.FirstOrDefault(c => c.Slug == "den-trang-tri")?.Id ?? Guid.NewGuid();
+            var tranhTreoTuongId = db.Categories.FirstOrDefault(c => c.Slug == "tranh-treo-tuong")?.Id ?? Guid.NewGuid();
+            var guongId = db.Categories.FirstOrDefault(c => c.Slug == "guong")?.Id ?? Guid.NewGuid();
+            var loHoaId = db.Categories.FirstOrDefault(c => c.Slug == "lo-hoa-chau-cay")?.Id ?? Guid.NewGuid();
+            var phuKienId = db.Categories.FirstOrDefault(c => c.Slug == "phu-kien-trang-tri")?.Id ?? Guid.NewGuid();
+            var appleBrandId = db.Brands.FirstOrDefault(b => b.Slug == "apple")?.Id ?? Guid.NewGuid();
+
+
+            var appleBrand = db.Brands.FirstOrDefault(b => b.Slug == "apple");
+            var tranhTreoTuong = db.Categories.FirstOrDefault(c => c.Slug == "tranh-treo-tuong");
+            var phuKien = db.Categories.FirstOrDefault(c => c.Slug == "phu-kien-trang-tri");
+            if (appleBrand != null && tranhTreoTuong != null && phuKien != null)
+            {
+                if (!db.BrandCategories.Any(bc => bc.BrandId == appleBrand.Id))
+                {
+                    db.BrandCategories.AddRange(
+                        new BrandCategory { BrandId = appleBrand.Id, CategoryId = tranhTreoTuong.Id },
+                        new BrandCategory { BrandId = appleBrand.Id, CategoryId = phuKien.Id }
+                    );
+                    db.SaveChanges();
+                    Console.WriteLine("✅ Seeded BrandCategories for Apple.");
+                }
+            }
+
+            var products = new List<Product>
+            {
+                // === APPLE PRODUCTS (có BrandId) ===
+                new Product { 
+                    Id = Guid.NewGuid(), Name = "Tranh treo tường phong cảnh (Apple)", 
+                    Slug = "tranh-phong-canh-apple", BasePrice = 550000, TotalStock = 25, 
+                    CategoryId = tranhTreoTuongId, BrandId = appleBrandId,
+                    Status = "active", Created = DateTime.UtcNow,
+                    ShortDescription = "Tranh phong cảnh đẹp", Description = "In trên vải cao cấp, khung gỗ",
+                    MainImageUrl = "/img/tranh-phong-canh.jpg", 
+                    Sku = "APPLE-001",
+                    MetaTitle = "Tranh phong cảnh", MetaDescription = "",
+                    IsFeatured = false, IsNewArrival = false, AvgRating = 0, ReviewCount = 0, SoldCount = 0 
+                },
+                new Product { 
+                    Id = Guid.NewGuid(), Name = "Phụ kiện iPhone 15 Pro Max", 
+                    Slug = "phu-kien-iphone-15", BasePrice = 1200000, TotalStock = 20, 
+                    CategoryId = phuKienId, BrandId = appleBrandId,
+                    Status = "active", Created = DateTime.UtcNow,
+                    ShortDescription = "Phụ kiện cao cấp cho iPhone", Description = "Ốp lưng, cường lực, sạc dự phòng",
+                    MainImageUrl = "/img/iphone-accessory.jpg", 
+                    Sku = "APPLE-002",
+                    MetaTitle = "iPhone Accessory", MetaDescription = "",
+                    IsFeatured = false, IsNewArrival = false, AvgRating = 0, ReviewCount = 0, SoldCount = 0 
+                },
+                new Product { 
+                    Id = Guid.NewGuid(), Name = "Ốp lưng iPhone 15 Pro Max Silicon", 
+                    Slug = "op-lung-iphone-15-silicon", BasePrice = 250000, TotalStock = 50, 
+                    CategoryId = phuKienId, BrandId = appleBrandId,
+                    Status = "active", Created = DateTime.UtcNow,
+                    ShortDescription = "Ốp lưng mềm cao cấp", Description = "Chất liệu silicon, chống va đập",
+                    MainImageUrl = "/img/op-lung-silicon.jpg", 
+                    Sku = "APPLE-003",
+                    MetaTitle = "Ốp lưng iPhone", MetaDescription = "",
+                    IsFeatured = false, IsNewArrival = false, AvgRating = 0, ReviewCount = 0, SoldCount = 0 
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Đèn bàn gỗ Minimal", 
+                    Slug = "den-ban-go-minimal", 
+                    Sku = "DE001",
+                    BasePrice = 450000, 
+                    SalePrice = 399000, 
+                    TotalStock = 20, 
+                    CategoryId = denTrangTriId,   // Dùng Guid
+                    IsFeatured = true, 
+                    IsNewArrival = true, 
+                    Status = "active", 
+                    ShortDescription = "Đèn bàn gỗ tối giản, phù hợp phòng làm việc",
+                    Description = "Đèn bàn gỗ minimal với thiết kế đơn giản, tinh tế...",
+                    MainImageUrl = "/img/products/den-ban.jpg",
+                    MetaTitle = "Đèn bàn gỗ Minimal - Đèn trang trí phòng làm việc",
+                    MetaDescription = "Đèn bàn gỗ Minimal thiết kế tối giản...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Đèn thả trần tròn", 
+                    Slug = "den-tha-tran-tron", 
+                    Sku = "DE002",
+                    BasePrice = 890000, 
+                    TotalStock = 15, 
+                    CategoryId = denTrangTriId,
+                    IsNewArrival = true, 
+                    Status = "active", 
+                    ShortDescription = "Đèn thả trần phong cách Scandinavian",
+                    Description = "Đèn thả trần thiết kế hình tròn...",
+                    MainImageUrl = "/img/products/den-tha.jpg",
+                    MetaTitle = "Đèn thả trần tròn - Phong cách Scandinavian",
+                    MetaDescription = "Đèn thả trần hình tròn, phong cách Scandinavian...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Đèn đứng phòng khách", 
+                    Slug = "den-dung-phong-khach", 
+                    Sku = "DE003",
+                    BasePrice = 1250000, 
+                    SalePrice = 990000, 
+                    TotalStock = 10, 
+                    CategoryId = denTrangTriId,
+                    IsFeatured = true, 
+                    Status = "active", 
+                    ShortDescription = "Đèn đứng cao cấp",
+                    Description = "Đèn đứng cao cấp với thiết kế sang trọng...",
+                    MainImageUrl = "/img/products/den-dung.jpg",
+                    MetaTitle = "Đèn đứng phòng khách cao cấp",
+                    MetaDescription = "Đèn đứng cao cấp, thiết kế sang trọng...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Tranh trừu tượng màu nước", 
+                    Slug = "tranh-truu-tuong-mau-nuoc", 
+                    Sku = "TR001",
+                    BasePrice = 550000, 
+                    TotalStock = 25, 
+                    CategoryId = tranhTreoTuongId,
+                    IsFeatured = true, 
+                    Status = "active", 
+                    ShortDescription = "Tranh treo tường phòng khách",
+                    Description = "Tranh trừu tượng màu nước với họa tiết độc đáo...",
+                    MainImageUrl = "/img/products/tranh-1.jpg",
+                    MetaTitle = "Tranh trừu tượng màu nước - Tranh treo tường phòng khách",
+                    MetaDescription = "Tranh trừu tượng màu nước độc đáo...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Tranh hoa lá", 
+                    Slug = "tranh-hoa-la", 
+                    Sku = "TR002",
+                    BasePrice = 320000, 
+                    TotalStock = 30, 
+                    CategoryId = tranhTreoTuongId,
+                    Status = "active", 
+                    ShortDescription = "Tranh in hoa lá tự nhiên",
+                    Description = "Tranh in hoa lá với màu sắc tươi sáng...",
+                    MainImageUrl = "/img/products/tranh-2.jpg",
+                    MetaTitle = "Tranh hoa lá - Tranh treo tường thiên nhiên",
+                    MetaDescription = "Tranh in hoa lá màu sắc tươi sáng...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Gương tròn viền gỗ", 
+                    Slug = "guong-tron-vien-go", 
+                    Sku = "GU001",
+                    BasePrice = 680000, 
+                    TotalStock = 18, 
+                    CategoryId = guongId,
+                    IsFeatured = true, 
+                    Status = "active", 
+                    ShortDescription = "Gương trang trí phòng ngủ",
+                    Description = "Gương tròn viền gỗ tự nhiên, sang trọng...",
+                    MainImageUrl = "/img/products/guong-1.jpg",
+                    MetaTitle = "Gương tròn viền gỗ - Gương trang trí phòng ngủ",
+                    MetaDescription = "Gương tròn viền gỗ tự nhiên, sang trọng...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Gương đứng full-body", 
+                    Slug = "guong-dung-full-body", 
+                    Sku = "GU002",
+                    BasePrice = 1290000, 
+                    SalePrice = 1190000, 
+                    TotalStock = 8, 
+                    CategoryId = guongId,
+                    Status = "active", 
+                    ShortDescription = "Gương soi toàn thân",
+                    Description = "Gương đứng full-body cao cấp, thiết kế hiện đại...",
+                    MainImageUrl = "/img/products/guong-2.jpg",
+                    MetaTitle = "Gương đứng full-body - Gương soi toàn thân hiện đại",
+                    MetaDescription = "Gương đứng full-body cao cấp, thiết kế hiện đại...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Lọ hoa gốm sứ thô", 
+                    Slug = "lo-hoa-gom-su-tho", 
+                    Sku = "LH001",
+                    BasePrice = 250000, 
+                    TotalStock = 40, 
+                    CategoryId = loHoaId,
+                    IsNewArrival = true, 
+                    Status = "active", 
+                    ShortDescription = "Lọ hoa trang trí bàn",
+                    Description = "Lọ hoa gốm sứ thô mộc, mang vẻ đẹp tự nhiên...",
+                    MainImageUrl = "/img/products/lo-hoa.jpg",
+                    MetaTitle = "Lọ hoa gốm sứ thô - Lọ hoa trang trí bàn",
+                    MetaDescription = "Lọ hoa gốm sứ thô mộc, vẻ đẹp tự nhiên...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Chậu cây treo tường", 
+                    Slug = "chau-cay-treo-tuong", 
+                    Sku = "LH002",
+                    BasePrice = 180000, 
+                    TotalStock = 50, 
+                    CategoryId = loHoaId,
+                    Status = "active", 
+                    ShortDescription = "Chậu cây cảnh treo tường",
+                    Description = "Chậu cây treo tường thông minh, tiết kiệm diện tích...",
+                    MainImageUrl = "/img/products/chau-cay.jpg",
+                    MetaTitle = "Chậu cây treo tường - Chậu cây cảnh thông minh",
+                    MetaDescription = "Chậu cây treo tường thông minh, tiết kiệm diện tích...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Đồng hồ treo tường tối giản", 
+                    Slug = "dong-ho-treo-tuong-toi-gian", 
+                    Sku = "PK001",
+                    BasePrice = 420000, 
+                    TotalStock = 15, 
+                    CategoryId = phuKienId,
+                    IsFeatured = true, 
+                    Status = "active", 
+                    ShortDescription = "Đồng hồ trang trí phòng khách",
+                    Description = "Đồng hồ treo tường thiết kế tối giản...",
+                    MainImageUrl = "/img/products/dong-ho.jpg",
+                    MetaTitle = "Đồng hồ treo tường tối giản - Đồng hồ trang trí phòng khách",
+                    MetaDescription = "Đồng hồ treo tường thiết kế tối giản...",
+                    Created = DateTime.UtcNow
+                },
+                new Product { 
+                    Id = Guid.NewGuid(),
+                    Name = "Khung ảnh gỗ 3D", 
+                    Slug = "khung-anh-go-3d", 
+                    Sku = "PK002",
+                    BasePrice = 150000, 
+                    TotalStock = 60, 
+                    CategoryId = phuKienId,
+                    Status = "active", 
+                    ShortDescription = "Khung ảnh treo tường",
+                    Description = "Khung ảnh gỗ 3D với lớp nổi tạo chiều sâu...",
+                    MainImageUrl = "/img/products/khung-anh.jpg",
+                    MetaTitle = "Khung ảnh gỗ 3D - Khung ảnh treo tường nghệ thuật",
+                    MetaDescription = "Khung ảnh gỗ 3D tạo chiều sâu...",
+                    Created = DateTime.UtcNow
+                }
+            };
+            db.Products.AddRange(products);
+            db.SaveChanges();
+            Console.WriteLine($"✅ Seeded {products.Count} products.");
+        }
+        
+        // Seed manufacturer user
+        if (!db.Users.Any(u => u.UserName == "apple_manufacturer"))
+        {
+            byte[] salt;
+            var hash = TokenHelper.HashPassword("123456", out salt);
+            var appleBrand = db.Brands.First(b => b.Slug == "apple");
+            var manufacturer = new User
+            {
+                Id = Guid.NewGuid(),
+                UserName = "apple_manufacturer",
+                FullName = "Apple Manufacturer",
+                Email = "manufacturer@apple.com",
+                Phone = "",
+                PasswordHash = hash,
+                Salt = salt,
+                Role = "manufacturer",
+                BrandId = appleBrand.Id,
+                IsActive = true,
+                Created = DateTime.UtcNow,
+                AvatarUrl = "",
+                Contact = "",
+                Position = ""
+            };
+            db.Users.Add(manufacturer);
+            db.SaveChanges();
+        }
 }
+
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
@@ -184,6 +521,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-Console.WriteLine("BaseCore API Service running on port 5001");
-Console.WriteLine("Endpoints: /api/products, /api/categories, /api/orders");
+Console.WriteLine("🎨 BaseCore API Service - Decor Store running on port 5001");
+Console.WriteLine("📦 Endpoints: /api/products, /api/categories, /api/orders, /api/auth");
 app.Run();
