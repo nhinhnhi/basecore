@@ -60,20 +60,12 @@ namespace BaseCore.Repository
             });
 
             // ========== CẤU HÌNH USER ADDRESS ==========
-            modelBuilder.Entity<UserAddress>(entity =>
-            {
+            modelBuilder.Entity<UserAddress>(entity => {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Id).HasMaxLength(450);
-                entity.Property(e => e.RecipientName).HasMaxLength(100);
-                entity.Property(e => e.Phone).HasMaxLength(20);
-                entity.Property(e => e.Province).HasMaxLength(100);
-                entity.Property(e => e.District).HasMaxLength(100);
-                entity.Property(e => e.Ward).HasMaxLength(100);
-                
                 entity.HasOne(e => e.User)
-                      .WithMany(u => u.Addresses)
-                      .HasForeignKey(e => e.UserId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // ========== CẤU HÌNH REFRESH TOKEN ==========

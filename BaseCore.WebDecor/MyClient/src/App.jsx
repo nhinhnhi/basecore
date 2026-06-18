@@ -18,6 +18,11 @@ import PublicRoute from './components/PublicRoute'; // Thêm import PublicRoute
 import OrderSuccess from './pages/OrderSuccess';
 import OrderDetail from './pages/OrderDetail';
 import VoucherCenter from './pages/VoucherCenter';
+import News from './pages/News';
+import Services from './pages/Services';
+import Video from './pages/Video';
+import NewsDetail from './pages/NewsDetail';
+import ServiceDetail from './pages/ServiceDetail';
 
 function App() {
     return (
@@ -44,6 +49,13 @@ function App() {
                     <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                     <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                     <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+
+                    <Route path="/news" element={<News />} />
+                    <Route path="/services" element={<Services />} />
+                    <Route path="/video" element={<Video />} />
+                    <Route path="/news/:id" element={<NewsDetail />} />
+                    <Route path="/services/:id" element={<ServiceDetail />} />
+
                 </Routes>
             </main>
             <Footer />

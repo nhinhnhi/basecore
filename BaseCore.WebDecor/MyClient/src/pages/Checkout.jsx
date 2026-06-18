@@ -476,7 +476,6 @@ const BankQRSection = ({ recipientPhone, amount }) => {
 
 // ─── MoMo QR ───
 const MomoQRSection = ({ recipientPhone, amount }) => {
-    // Số điện thoại MoMo của shop — thay bằng SĐT thật
     const MOMO_PHONE = '0969534568';
     const MOMO_NAME  = 'MINIMAL DECOR';
     const content    = `DH MINIMALDECOR ${recipientPhone}`;
@@ -559,7 +558,7 @@ const VNPayQRSection = ({ recipientPhone, amount }) => {
 
 // ─── ZaloPay QR ───
 const ZaloPayQRSection = ({ recipientPhone, amount }) => {
-    const ZALO_PHONE = '0969534568'; // SĐT ZaloPay của shop — thay bằng SĐT thật
+    const ZALO_PHONE = '0969534568';
     const ZALO_NAME  = 'MINIMAL DECOR';
     const content    = `DH MINIMAL ${recipientPhone}`;
     const qrData     = `zalopay://payment?phone=${ZALO_PHONE}&amount=${amount}&description=${encodeURIComponent(content)}`;

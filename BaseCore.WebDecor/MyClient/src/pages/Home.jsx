@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useCart } from '../contexts/Cartcontext';
 import { useAuth } from '../contexts/Authcontext';
-import CouponBanner from '../components/CouponBanner';
 
 const API_BASE = 'http://localhost:5001/api';
 
@@ -236,10 +235,6 @@ const Home = () => {
               </div>
             </Link>
           </div>
-        </div>
-
-        <div className="container">
-            <CouponBanner />
         </div>
 
         {/* FEATURED PRODUCTS */}

@@ -2,25 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/Authcontext';
 import { useCart } from '../contexts/Cartcontext';
-
-const CATEGORIES = [
-  { label: 'ĐỒ TRANG TRÍ NỘI THẤT', icon: '🏠' },
-  { label: 'ĐỒ DECOR TRANG TRÍ PHÒNG', icon: '🪴' },
-  { label: 'QUÀ TẶNG TÂN GIA CAO CẤP', icon: '🎁' },
-  { label: 'QUÀ TẶNG KHAI TRƯƠNG', icon: '🎊' },
-  { label: 'QUÀ TẶNG SINH NHẬT', icon: '🎂' },
-  { label: 'QUÀ TẶNG SẾP CAO CẤP', icon: '⭐' },
-  { label: 'QUÀ TẶNG ĐỐI TÁC D.NGHIỆP', icon: '🤝' },
-  { label: 'QUÀ CƯỚI – KỶ NIỆM NGÀY CƯỚI', icon: '💍' },
-];
+import { CATEGORIES } from '../constants/categories';
 
 const NAV_LINKS = [
   { to: '/', label: 'TRANG CHỦ' },
-  { to: '/shop', label: 'GIỚI THIỆU' },
-  { to: '/shop', label: 'VIDEO' },
+  { to: '/about', label: 'GIỚI THIỆU' },
+  { to: '/video', label: 'VIDEO' },
   { to: '/shop', label: 'SẢN PHẨM BÁN CHẠY' },
-  { to: '/contact', label: 'TIN TỨC' },
-  { to: '/shop', label: 'DỊCH VỤ' },
+  { to: '/news', label: 'TIN TỨC' },
+  { to: '/services', label: 'DỊCH VỤ' },
   { to: '/contact', label: 'LIÊN HỆ' },
 ];
 

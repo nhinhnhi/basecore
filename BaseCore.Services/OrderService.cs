@@ -145,7 +145,7 @@ namespace BaseCore.Services
                         .FirstOrDefaultAsync(p => p.Id == item.ProductId)
                         ?? throw new InvalidOperationException(
                             $"Sản phẩm {item.ProductId} không tồn tại");
-
+                    // kiểm tra ton kho
                     if (product.TotalStock < item.Quantity)
                         throw new InvalidOperationException(
                             $"Sản phẩm '{product.Name}' không đủ hàng (còn {product.TotalStock})");
